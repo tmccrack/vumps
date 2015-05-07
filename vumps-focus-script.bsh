@@ -5,12 +5,13 @@ import arc.api.fits.ArcFitsFileJAPI;
 
 /*
  * User defines
+ * Motor has 34304 cnts/mm, 6mm range, centered at 102912 cnts
  */
 
-int encStart = 80000;  // Starting encoder postion
-int encStop = 130000;  // Stoping encoder position
-int encStep = 5000;  // Step size between images
-float integration = 60.0;
+int encStart = 80000;  // Starting encoder postion [counts]
+int encStop = 130000;  // Stoping encoder position [counts]
+int encStep = 5000;  // Step size between images [counts]
+float integration = 60.0;  // Integration time [seconds]
 
 /*
  * Do not edit beyond here
@@ -36,10 +37,13 @@ if (!(f.exists() && f.isDirectory())) {
 
 // Motor positioning routine
 int moveMotor(int position) {
+	// Run motor program
 	Runtime runtime = Runtime.getRuntime();
 	String argues = new String("./focabs " + position.toString()); // Format run command
 	Process process = runtime.exec(argues);  // Move motor
 	process.waitFor();  // Hope this does not fail
+	
+	// Read program output
 	InputStream is = process.getInputStream();
 	InputStreamReader isr = new InputStreamReader(is);
 	BufferedReader br = new BufferedReader(isr);
@@ -68,9 +72,11 @@ while (encPos < encStop) {
 	fpath = path + "/" + "Focus_" + encInd.toString() + ".fits";
 	Expose(integration, openS, ArcDeinterlaceJAPI.DEINTERLACE_CCD_QUAD, fpath);
 	ArcFitsFileJAPI.WriteKeyword("ENCPOS", encPos.toString(), "Encoder position", fpath);	
+	
 	encInd++;
 	encTarget += encStep;
 	encPos = moveMotor(encTarget);
+	
 	// Hard coded break in case motor move error
 	if (encPos <= 0 || Math.abs(encPos - encTarget) > 250) {
 		System.out.println("Focus routine error");
