@@ -1,1 +1,86 @@
+import java.text.*;
+import arc.api.device.ArcDeviceJAPI;
+import arc.api.deinterlace.ArcDeinterlaceJAPI;
+import arc.api.fits.ArcFitsFileJAPI;
+
+/*
+ * User defines
+ */
+
+int encStart = 80000;  // Starting encoder postion
+int encStop = 130000;  // Stoping encoder position
+int encStep = 5000;  // Step size between images
+float integration = 60.0;
+
+/*
+ * Do not edit beyond here
+ */
+
+boolean openS = true;
+int encPos = 0;  // Current motor position
+int encTarget = encStart;  // Target position
+int encInd = 0;  // Image index
+
+// Configure ARC libraries
+ArcDeviceJAPI.Configure();
+ArcDeinterlaceJAPI.Configure();
+
+// Format image directory
+DateFormat dateFormat = new SimpleDateFormat("yyyyMMdd");
+Date date = new Date();
+path = bsh.cwd + "/" + dateFormat.format(date);
+f = new File(path);
+if (!(f.exists() && f.isDirectory())) {
+	f.mkdir();
+}
+
+// Motor positioning routine
+int moveMotor(int position) {
+	Runtime runtime = Runtime.getRuntime();
+	String argues = new String("./focabs " + position.toString()); // Format run command
+	Process process = runtime.exec(argues);  // Move motor
+	process.waitFor();  // Hope this does not fail
+	InputStream is = process.getInputStream();
+	InputStreamReader isr = new InputStreamReader(is);
+	BufferedReader br = new BufferedReader(isr);
+	String response; 
+	br.readLine();
+	response =  br.readLine(); // Get second line of return
+	int val = 0;
+	if (response != null) {
+		String[] resp = response.split(": ");
+		val = Integer.parseInt(resp[1]);
+	}
+	else {
+		System.out.println("focabs error");
+		int val = -1;
+	}
+	return val;
+}
+
+
+// Put motor at starting position
+encPos = moveMotor(encStart);
+
+// Loop through, taking images until past stop position
+while (encPos < encStop) {
+	System.out.println("Motor at " + encPos.toString());
+	fpath = path + "/" + "Focus_" + encInd.toString() + ".fits";
+	Expose(integration, openS, ArcDeinterlaceJAPI.DEINTERLACE_CCD_QUAD, fpath);
+	ArcFitsFileJAPI.WriteKeyword("ENCPOS", encPos.toString(), "Encoder position", fpath);	
+	encInd++;
+	encTarget += encStep;
+	encPos = moveMotor(encTarget);
+	// Hard coded break in case motor move error
+	if (encPos <= 0 || Math.abs(encPos - encTarget) > 250) {
+		System.out.println("Focus routine error");
+		break;
+	}
+}
+
+
+
+
+
+
 
