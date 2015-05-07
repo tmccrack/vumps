@@ -67,17 +67,16 @@ int moveMotor(int position) {
 encPos = moveMotor(encStart);
 
 // Loop through, taking images until past stop position
+DateFormat dateFormat = new SimpleDateFormat("ddhmmss");
 while (encPos < encStop) {
 	System.out.println("Motor at " + encPos.toString());
-	fpath = path + "/" + "Focus_" + encInd.toString() + ".fits";
+	Date date = new Date();
+	fpath = path + "/" + "Focus_" + dateFormat.format(date) + ".fits";
 	Expose(integration, openS, ArcDeinterlaceJAPI.DEINTERLACE_CCD_QUAD, fpath);
 	ArcFitsFileJAPI.WriteKeyword("ENCPOS", encPos.toString(), "Encoder position", fpath);	
-	
 	encInd++;
 	encTarget += encStep;
 	encPos = moveMotor(encTarget);
-	
-	// Hard coded break in case motor move error
 	if (encPos <= 0 || Math.abs(encPos - encTarget) > 250) {
 		System.out.println("Focus routine error");
 		break;
